@@ -1,0 +1,14 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# your own results
+my_laps.csv
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
