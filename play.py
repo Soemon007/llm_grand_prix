@@ -59,6 +59,7 @@ class Game:
         self.laps = []               # finished lap times
         self.penalty = 0.0           # penalty collected during the current lap
         self.sparks = []             # little particles when you hit a wall
+        self.skids = []              # tyre marks left when the car slides
         self.finished = False
 
     def update(self, steer_input, throttle_input, reset=False):
@@ -69,8 +70,7 @@ class Game:
             self.countdown -= T.DT
             return
 
-        # steer smoothly instead of snapping straight to full lock
-        self.steer += np.clip(steer_input - self.steer, -5 * T.DT, 5 * T.DT)
+        self.steer = steer_input              # the car itself turns its wheels gradually
 
         if reset:
             self.reset_car()
@@ -79,6 +79,8 @@ class Game:
         self.clock += T.DT
         if self.car.impact_pos is not None:
             self.add_sparks(self.car.impact_pos)
+        if abs(self.car.slip) > 0.12 and self.car.speed > 60:
+            self.skids = (self.skids + [self.car.pos.copy()])[-400:]
 
         # a lap is done each time the car's distance passes another full lap
         if self.car.progress >= (len(self.laps) + 1) * T.LAP_LENGTH:
@@ -95,11 +97,7 @@ class Game:
 
     def reset_car(self):
         """Put the car back on the centre line, pointing the right way."""
-        i = self.car.idx
-        self.car.pos = T.CENTER[i].copy()
-        self.car.heading = float(np.arctan2(T.TANGENT[i, 1], T.TANGENT[i, 0]))
-        self.car.speed = 0.0
-        self.car.hit_wall = False
+        self.car.place(self.car.idx)
         self.steer = 0.0
         self.penalty += RESET_PENALTY
 
@@ -195,6 +193,8 @@ class Renderer:
 
     def draw(self, game):
         self.screen.blit(self.track, (0, 0))
+        for p in game.skids:
+            pygame.draw.circle(self.screen, (36, 37, 41), self.px(p), max(1, int(1.6 * self.scale)))
         self.draw_car(game.car)
         for p, _, life in game.sparks:
             pygame.draw.circle(self.screen, (255, 214, 90), self.px(p), max(1, int(2 * self.scale * life / 0.35)))
